@@ -61,6 +61,8 @@ def test_transaction(monkeypatch, capsys):
     db = DB()
     execute_user_prompt(db, monkeypatch, "BEGIN")
     execute_user_prompt(db, monkeypatch, "SET A 10")
+    execute_user_prompt(db, monkeypatch, "FIND 10")
+    assert 'A\n' == capsys.readouterr().out
     execute_user_prompt(db, monkeypatch, "BEGIN")
     execute_user_prompt(db, monkeypatch, "SET A 20")
     execute_user_prompt(db, monkeypatch, "BEGIN")
@@ -73,4 +75,8 @@ def test_transaction(monkeypatch, capsys):
     execute_user_prompt(db, monkeypatch, "COMMIT")
     execute_user_prompt(db, monkeypatch, "GET A")
     assert '20\n' == capsys.readouterr().out
+    execute_user_prompt(db, monkeypatch, "BEGIN")
+    execute_user_prompt(db, monkeypatch, "SET A 20")
+    execute_user_prompt(db, monkeypatch, "COUNTS 20")
+    assert '2\n' == capsys.readouterr().out
 

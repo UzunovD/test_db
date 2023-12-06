@@ -7,13 +7,12 @@ class DB:
     def __init__(self):
         self._db = {}
         self._value_data = {}
-        self._is_transaction = False
         self._transaction_queries = []
 
     def set(self, query: List[str], commit=False):
         key, value = query
-        if self._is_transaction and not commit:
-            return self._transaction_queries.append({key: value})
+        if not commit:
+            return self._transaction_queries[-1].update({key: value})
         self._db[key] = value
         self._value_data.setdefault(value, set())
         self._value_data[value].add(key)
@@ -21,8 +20,8 @@ class DB:
     def get(self, query: List[str]):
         key = query[0]
         res = self._db.get(key, NULL)
-        if res == NULL and self._is_transaction and self._transaction_queries:
-            res = self._transaction_queries[-1].get(key, None)
+        if res == NULL and self._transaction_queries:
+            res = self._transaction_queries[-1].get(key, NULL)
         print(res)
 
     def unset(self, query: List[str]):
@@ -32,11 +31,16 @@ class DB:
 
     def counts(self, query: List[str]):
         value = query[0]
-        print(len(self._value_data.get(value, {})))
+        current_transaction = self._transaction_queries[-1] if self._transaction_queries else {}
+        res = len([v for v in current_transaction.values() if v == value])
+        print(len(self._value_data.get(value, {})) + res)
 
     def find(self, query: List[str]):
         value = query[0]
-        print(', '.join(self._value_data.get(value, [NULL])))
+        res = self._value_data.get(value, '')
+        current_transaction = self._transaction_queries[-1] if self._transaction_queries else {}
+        res += ', '.join(k for k, v in current_transaction.items() if v == value)
+        print(res if res else NULL)
 
     def _get_action(self, user_input: List[str]):
         command = user_input[0].lower()
@@ -62,20 +66,16 @@ class DB:
         return user_input
 
     def begin(self, _):
-        self._is_transaction = True
+        self._transaction_queries.append({})
 
     def rollback(self, _):
         if self._transaction_queries:
             self._transaction_queries.pop()
-        if not self._transaction_queries:
-            self._is_transaction = False
 
     def commit(self, _):
         query = self._transaction_queries.pop() if self._transaction_queries else None
         if query:
             self.set(list(map(list, query.items()))[0], commit=True)
-        if not self._transaction_queries:
-            self._is_transaction = False
 
     def run(self):
         while True:
